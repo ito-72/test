@@ -36,10 +36,17 @@
       border: 2px solid red;
       background-color: #ffecec;
     }
+    .info {
+      margin-bottom: 10px;
+      font-size: 14px;
+      color: #555;
+    }
   </style>
 </head>
 <body>
   <h1>納品データ作成ツール</h1>
+
+  <div class="info">🛈 「📊 冊数計算＋No.重複確認」ボタンを押すと、自動で冊数が入力されます</div>
 
   <table id="inputTable">
     <thead>
@@ -59,7 +66,7 @@
   </table>
 
   <button onclick="addRow()">＋ 行を追加</button>
-  <button onclick="checkData()">✅ チェック</button>
+  <button onclick="checkData()">📊 冊数計算＋No.重複確認</button>
   <button onclick="exportExcel()">🧾 エクセルで出力</button>
   <button onclick="launchMail()">📧 メール起動（添付は手動でお願いします）</button>
 
@@ -110,6 +117,8 @@
 
     function checkData() {
       const rows = document.querySelectorAll('#inputTable tbody tr');
+      const allNumbers = new Map();
+      const numberMap = new Map();
       let errorMessages = [];
 
       rows.forEach((row, index) => {
@@ -129,11 +138,30 @@
           countCell.textContent = '-';
         } else {
           countCell.textContent = parsed.length + '冊';
+          parsed.forEach(num => {
+            if (!numberMap.has(num)) {
+              numberMap.set(num, []);
+            }
+            numberMap.get(num).push(index + 2);
+          });
         }
       });
 
-      if (errorMessages.length > 0) {
-        alert(errorMessages.join('\n') + '\n\n・半角数字のみを使用してください\n・使用可能な記号は「-」「~」「ー」「～」「,」です（例：1-4,6,8）\n・区切りは「,」またはスペースで入力してください\n・アルファベットは使えません');
+      // 重複チェック
+      const duplicateMessages = [];
+      for (const [num, rows] of numberMap.entries()) {
+        if (rows.length > 1) {
+          duplicateMessages.push(`・${num} が ${rows.join('行目と ')}行目 に重複しています`);
+          rows.forEach(rowNum => {
+            const input = document.querySelector(`#inputTable tbody tr:nth-child(${rowNum - 1}) .no-input`);
+            if (input) input.classList.add('error');
+          });
+        }
+      }
+
+      if (errorMessages.length > 0 || duplicateMessages.length > 0) {
+        alert((errorMessages.concat(duplicateMessages)).join('\n') +
+          '\n\n・半角数字のみを使用してください\n・使用可能な記号は「-」「~」「ー」「～」「,」です（例：1-4,6,8）\n・区切りは「,」またはスペースで入力してください\n・アルファベットは使えません');
       } else {
         alert('チェック完了！すべて正常です。');
       }
