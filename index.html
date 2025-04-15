@@ -124,6 +124,11 @@
     cell2.className = 'count-cell';
     cell2.textContent = '-';
     cell3.innerHTML = '<input type="text" class="destination-input">';
+    // カーソル移動を追加
+    const input = cell1.querySelector('input');
+    if (input) {
+      input.focus();
+    }
   }
 
   function parseRange(str) {
