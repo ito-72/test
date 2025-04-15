@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>納品データ作成ツール</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -31,6 +32,7 @@
       border-radius: 8px;
       cursor: pointer;
       margin-right: 10px;
+      margin-bottom: 10px;
     }
     .error {
       border: 2px solid red;
@@ -65,16 +67,22 @@
     </tbody>
   </table>
 
+
  <div style="margin-bottom: 10px;">
   <button onclick="addRow()">＋ 行を追加</button>
-  <button onclick="checkData()">📊 冊数計算＋No.重複確認</button>
+</div>
+
+<div>
+  <button onclick="checkData()">冊数記入/No.重複確認</button>
 </div>
 
 <div>
   <button onclick="exportExcel()">🧾 エクセルで出力</button>
+  </div>
+
+<div>
   <button onclick="launchMail()">📧 メール起動（添付は手動でお願いします）</button>
 </div>
-
 
   <script>
     document.addEventListener('keydown', function (e) {
@@ -123,7 +131,6 @@
 
     function checkData() {
       const rows = document.querySelectorAll('#inputTable tbody tr');
-      const allNumbers = new Map();
       const numberMap = new Map();
       let errorMessages = [];
 
@@ -174,17 +181,41 @@
     }
 
     function exportExcel() {
-      alert('[ダミー] エクセル出力処理をここに実装');
+      const rows = document.querySelectorAll('#inputTable tbody tr');
+      const data = [['No.', '冊数', '納品先']];
+
+      rows.forEach(row => {
+        const no = row.querySelector('.no-input').value.trim();
+        const count = row.querySelector('.count-cell').textContent.trim();
+        const dest = row.querySelector('.destination-input').value.trim();
+
+        if (no && count !== '-' && dest) {
+          data.push([no, count, dest]);
+        }
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, '納品データ');
+
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = ('0' + (today.getMonth() + 1)).slice(-2);
+      const d = ('0' + today.getDate()).slice(-2);
+      const fileName = `納品データ_${y}${m}${d}.xlsx`;
+
+      XLSX.writeFile(workbook, fileName);
     }
 
-    function launchMail() {
+       function launchMail() {
       const subject = encodeURIComponent('納品データのご送付');
       const body = encodeURIComponent(
         'お疲れ様です。\n\n以下、納品データになります。\n\n※添付忘れにご注意ください※\n出力されたExcelファイル（納品データ_YYYYMMDD.xlsx）を添付のうえ、ご確認をお願いいたします。\n\nよろしくお願いいたします。'
       );
-      const mailtoLink = `mailto:xxxx@example.com?subject=${subject}&body=${body}`;
+      const mailtoLink = `mailto:sprt@nifty.com?subject=${subject}&body=${body}`;
       window.location.href = mailtoLink;
     }
   </script>
 </body>
 </html>
+
