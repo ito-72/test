@@ -49,10 +49,27 @@
       font-size: 14px;
       color: #555;
     }
+    .tooltip {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
   <h1>納品データ作成ツール</h1>
+
+  <details style="margin-bottom: 20px;">
+    <summary><strong>📘 このツールの使い方</strong></summary>
+    <ol>
+      <li><strong>No.欄</strong>にナンバリングを入力してください（例：1-4 5 8-10）</li>
+      <li><strong>納品先</strong>を記入してください</li>
+      <li>納品先が分かれる場合は「＋行を追加」して、それぞれ記入してください</li>
+      <li>記入後、「冊数を自動計算／No.の重複チェック」ボタンを押してください</li>
+      <li>内容に問題がなければ「Excelファイルを作成」ボタンでダウンロードできます</li>
+      <li>「メール作成画面を開く」ボタンでメールソフトが立ち上がります<br>※Excelファイルはご自身で添付をお願いします</li>
+    </ol>
+  </details>
 
   <table id="inputTable">
     <thead>
@@ -76,15 +93,18 @@
   </div>
 
   <div style="margin-bottom: 30px;">
-    <button class="orange-gradient" onclick="checkData()">冊数記入<br>重複確認</button>
+    <button class="orange-gradient" onclick="checkData()">冊数を自動計算<br>No.の重複チェック</button>
+    <div class="tooltip">記入されたNo.から冊数を算出し、重複していないかチェックします</div>
   </div>
 
   <div class="spaced">
-    <button onclick="exportExcel()">エクセルで出力</button>
+    <button onclick="exportExcel()">Excelファイルを作成</button>
+    <div class="tooltip">入力済みのデータをExcel形式でダウンロードできます</div>
   </div>
 
   <div class="spaced">
-    <button onclick="launchMail()">メール起動<br>（添付は手動でお願いします）</button>
+    <button onclick="launchMail()">メール作成画面を開く</button>
+    <div class="tooltip">※Excelファイルは手動で添付してください</div>
   </div>
 
 <script>
