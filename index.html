@@ -34,12 +34,18 @@
       margin-right: 10px;
       margin-bottom: 10px;
     }
+    .orange-gradient {
+      background: linear-gradient(to right, #ffa500, #ff7f50);
+      color: white;
+    }
+    .spaced {
+      margin-top: 30px;
+    }
     .error {
       border: 2px solid red;
       background-color: #ffecec;
     }
     .info {
-      margin-bottom: 10px;
       font-size: 14px;
       color: #555;
     }
@@ -48,13 +54,11 @@
 <body>
   <h1>納品データ作成ツール</h1>
 
-  <div class="info">🛈 「📊 冊数計算＋No.重複確認」ボタンを押すと、自動で冊数が入力されます</div>
-
   <table id="inputTable">
     <thead>
       <tr>
         <th>No.</th>
-        <th>冊数</th>
+        <th>冊数<br><span class="info">（自動で記入されます）</span></th>
         <th>納品先</th>
       </tr>
     </thead>
@@ -67,155 +71,140 @@
     </tbody>
   </table>
 
-
- <div style="margin-bottom: 10px;">
-  <button onclick="addRow()">＋ 行を追加</button>
-</div>
-
-<div>
-  <button onclick="checkData()">冊数記入/No.重複確認</button>
-</div>
-
-<div>
-  <button onclick="exportExcel()">🧾 エクセルで出力</button>
+  <div style="margin-bottom: 20px;">
+    <button onclick="addRow()">＋ 行を追加<br>Ctrl(Cmd)+Enter</button>
   </div>
 
-<div>
-  <button onclick="launchMail()">📧 メール起動（添付は手動でお願いします）</button>
-</div>
+  <div style="margin-bottom: 30px;">
+    <button class="orange-gradient" onclick="checkData()">冊数記入<br>重複確認</button>
+  </div>
 
-  <script>
-    document.addEventListener('keydown', function (e) {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        addRow();
+  <div class="spaced">
+    <button onclick="exportExcel()">エクセルで出力</button>
+  </div>
+
+  <div class="spaced">
+    <button onclick="launchMail()">メール起動（添付は手動でお願いします）</button>
+  </div>
+
+<script>
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      addRow();
+    }
+  });
+
+  function addRow() {
+    const table = document.getElementById('inputTable').getElementsByTagName('tbody')[0];
+    const newRow = table.insertRow();
+    const cell1 = newRow.insertCell();
+    const cell2 = newRow.insertCell();
+    const cell3 = newRow.insertCell();
+    cell1.innerHTML = '<input type="text" class="no-input">';
+    cell2.className = 'count-cell';
+    cell2.textContent = '-';
+    cell3.innerHTML = '<input type="text" class="destination-input">';
+  }
+
+  function parseRange(str) {
+    let result = [];
+    str = str.replace(/[　]/g, ' ')
+             .replace(/[、]/g, ',')
+             .replace(/[~ー～?]/g, '-')
+             .replace(/\s+/g, ',')
+             .replace(/,,+/g, ',');
+    const parts = str.split(',');
+    for (const part of parts) {
+      if (part.includes('-')) {
+        const [start, end] = part.split('-').map(Number);
+        if (!isNaN(start) && !isNaN(end) && start <= end) {
+          for (let i = start; i <= end; i++) result.push(i);
+        } else {
+          return null;
+        }
+      } else if (!isNaN(part)) {
+        result.push(Number(part));
+      } else {
+        return null;
+      }
+    }
+    return result;
+  }
+
+  function checkData() {
+    const rows = document.querySelectorAll('#inputTable tbody tr');
+    const numberMap = new Map();
+    let errorMessages = [];
+    rows.forEach((row, index) => {
+      const noInput = row.querySelector('.no-input');
+      const countCell = row.querySelector('.count-cell');
+      const raw = noInput.value.trim();
+      const parsed = parseRange(raw);
+      noInput.classList.remove('error');
+      if (!raw) {
+        countCell.textContent = '-';
+        return;
+      }
+      if (parsed === null) {
+        errorMessages.push(`${index + 2}行目の No.欄の形式に誤りがあります。`);
+        noInput.classList.add('error');
+        countCell.textContent = '-';
+      } else {
+        countCell.textContent = parsed.length + '冊';
+        parsed.forEach(num => {
+          if (!numberMap.has(num)) numberMap.set(num, []);
+          numberMap.get(num).push(index + 2);
+        });
       }
     });
-
-    function addRow() {
-      const table = document.getElementById('inputTable').getElementsByTagName('tbody')[0];
-      const newRow = table.insertRow();
-      const cell1 = newRow.insertCell();
-      const cell2 = newRow.insertCell();
-      const cell3 = newRow.insertCell();
-      cell1.innerHTML = '<input type="text" class="no-input">';
-      cell2.className = 'count-cell';
-      cell2.textContent = '-';
-      cell3.innerHTML = '<input type="text" class="destination-input">';
-    }
-
-    function parseRange(str) {
-      let result = [];
-      str = str.replace(/[　]/g, ' ')  // 全角スペース
-               .replace(/[、]/g, ',')  // 全角カンマ
-               .replace(/[~ー～?]/g, '-')
-               .replace(/\s+/g, ',')
-               .replace(/,,+/g, ',');
-      const parts = str.split(',');
-
-      for (const part of parts) {
-        if (part.includes('-')) {
-          const [start, end] = part.split('-').map(Number);
-          if (!isNaN(start) && !isNaN(end) && start <= end) {
-            for (let i = start; i <= end; i++) result.push(i);
-          } else {
-            return null; // パースエラー
-          }
-        } else if (!isNaN(part)) {
-          result.push(Number(part));
-        } else {
-          return null; // パースエラー
-        }
-      }
-      return result;
-    }
-
-    function checkData() {
-      const rows = document.querySelectorAll('#inputTable tbody tr');
-      const numberMap = new Map();
-      let errorMessages = [];
-
-      rows.forEach((row, index) => {
-        const noInput = row.querySelector('.no-input');
-        const countCell = row.querySelector('.count-cell');
-        const raw = noInput.value.trim();
-        const parsed = parseRange(raw);
-
-        noInput.classList.remove('error');
-        if (!raw) {
-          countCell.textContent = '-';
-          return;
-        }
-        if (parsed === null) {
-          errorMessages.push(`${index + 2}行目の No.欄の形式に誤りがあります。`);
-          noInput.classList.add('error');
-          countCell.textContent = '-';
-        } else {
-          countCell.textContent = parsed.length + '冊';
-          parsed.forEach(num => {
-            if (!numberMap.has(num)) {
-              numberMap.set(num, []);
-            }
-            numberMap.get(num).push(index + 2);
-          });
-        }
-      });
-
-      // 重複チェック
-      const duplicateMessages = [];
-      for (const [num, rows] of numberMap.entries()) {
-        if (rows.length > 1) {
-          duplicateMessages.push(`・${num} が ${rows.join('行目と ')}行目 に重複しています`);
-          rows.forEach(rowNum => {
-            const input = document.querySelector(`#inputTable tbody tr:nth-child(${rowNum - 1}) .no-input`);
-            if (input) input.classList.add('error');
-          });
-        }
-      }
-
-      if (errorMessages.length > 0 || duplicateMessages.length > 0) {
-        alert((errorMessages.concat(duplicateMessages)).join('\n') +
-          '\n\n・半角数字のみを使用してください\n・使用可能な記号は「-」「~」「ー」「～」「,」です（例：1-4,6,8）\n・区切りは「,」またはスペースで入力してください\n・アルファベットは使えません');
-      } else {
-        alert('チェック完了！すべて正常です。');
+    const duplicateMessages = [];
+    for (const [num, rows] of numberMap.entries()) {
+      if (rows.length > 1) {
+        duplicateMessages.push(`・${num} が ${rows.join('行目と ')}行目 に重複しています`);
+        rows.forEach(rowNum => {
+          const input = document.querySelector(`#inputTable tbody tr:nth-child(${rowNum - 1}) .no-input`);
+          if (input) input.classList.add('error');
+        });
       }
     }
-
-    function exportExcel() {
-      const rows = document.querySelectorAll('#inputTable tbody tr');
-      const data = [['No.', '冊数', '納品先']];
-
-      rows.forEach(row => {
-        const no = row.querySelector('.no-input').value.trim();
-        const count = row.querySelector('.count-cell').textContent.trim();
-        const dest = row.querySelector('.destination-input').value.trim();
-
-        if (no && count !== '-' && dest) {
-          data.push([no, count, dest]);
-        }
-      });
-
-      const worksheet = XLSX.utils.aoa_to_sheet(data);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, '納品データ');
-
-      const today = new Date();
-      const y = today.getFullYear();
-      const m = ('0' + (today.getMonth() + 1)).slice(-2);
-      const d = ('0' + today.getDate()).slice(-2);
-      const fileName = `納品データ_${y}${m}${d}.xlsx`;
-
-      XLSX.writeFile(workbook, fileName);
+    if (errorMessages.length > 0 || duplicateMessages.length > 0) {
+      alert((errorMessages.concat(duplicateMessages)).join('\n') +
+        '\n\n・半角数字のみを使用してください\n・使用可能な記号は「-」「~」「ー」「～」「,」です（例：1-4,6,8）\n・区切りは「,」またはスペースで入力してください\n・アルファベットは使えません');
+    } else {
+      alert('チェック完了！すべて正常です。');
     }
+  }
 
-       function launchMail() {
-      const subject = encodeURIComponent('納品データのご送付');
-      const body = encodeURIComponent(
-        'お疲れ様です。\n\n以下、納品データになります。\n\n※添付忘れにご注意ください※\n出力されたExcelファイル（納品データ_YYYYMMDD.xlsx）を添付のうえ、ご確認をお願いいたします。\n\nよろしくお願いいたします。'
-      );
-      const mailtoLink = `mailto:sprt@nifty.com?subject=${subject}&body=${body}`;
-      window.location.href = mailtoLink;
-    }
-  </script>
+  function exportExcel() {
+    const rows = document.querySelectorAll('#inputTable tbody tr');
+    const data = [['No.', '冊数', '納品先']];
+    rows.forEach(row => {
+      const no = row.querySelector('.no-input').value.trim();
+      const count = row.querySelector('.count-cell').textContent.trim();
+      const dest = row.querySelector('.destination-input').value.trim();
+      if (no && count !== '-' && dest) {
+        data.push([no, count, dest]);
+      }
+    });
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, '納品データ');
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = ('0' + (today.getMonth() + 1)).slice(-2);
+    const d = ('0' + today.getDate()).slice(-2);
+    const fileName = `納品データ_${y}${m}${d}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  }
+
+  function launchMail() {
+    const subject = encodeURIComponent('納品データのご送付');
+    const body = encodeURIComponent(
+      'お疲れ様です。\n\n以下、納品データになります。\n\n※添付忘れにご注意ください※\n出力されたExcelファイル（納品データ_YYYYMMDD.xlsx）を添付のうえ、ご確認をお願いいたします。\n\nよろしくお願いいたします。'
+    );
+    const mailtoLink = `mailto:sprt@nifty.com?subject=${subject}&body=${body}`;
+    window.location.href = mailtoLink;
+  }
+</script>
 </body>
 </html>
-
