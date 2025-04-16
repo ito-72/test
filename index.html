@@ -107,6 +107,11 @@
     <div class="tooltip">※Excelファイルは手動で添付してください</div>
   </div>
 
+  <div class="spaced">
+    <input type="file" id="importExcel" accept=".xlsx">
+    <div class="tooltip">既存のExcelから納品データをインポートします</div>
+  </div>
+
 <script>
   document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -124,11 +129,8 @@
     cell2.className = 'count-cell';
     cell2.textContent = '-';
     cell3.innerHTML = '<input type="text" class="destination-input">';
-    // カーソル移動を追加
     const input = cell1.querySelector('input');
-    if (input) {
-      input.focus();
-    }
+    if (input) input.focus();
   }
 
   function parseRange(str) {
@@ -230,6 +232,44 @@
     const mailtoLink = `mailto:sprt@nifty.com?subject=${subject}&body=${body}`;
     window.location.href = mailtoLink;
   }
+
+  document.getElementById('importExcel').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        const tbody = document.querySelector('#inputTable tbody');
+        tbody.innerHTML = '';
+
+        rows.slice(1).forEach(row => {
+          if (row.length >= 3) {
+            const newRow = tbody.insertRow();
+            const cell1 = newRow.insertCell();
+            const cell2 = newRow.insertCell();
+            const cell3 = newRow.insertCell();
+            cell1.innerHTML = `<input type="text" class="no-input" value="${row[0] || ''}">`;
+            cell2.className = 'count-cell';
+            cell2.textContent = row[1] || '-';
+            cell3.innerHTML = `<input type="text" class="destination-input" value="${row[2] || ''}">`;
+          }
+        });
+
+        alert('Excelファイルを読み込みました！');
+      } catch (err) {
+        console.error(err);
+        alert('Excelの読み込みに失敗しました。形式が正しいか確認してください。');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
 </script>
 </body>
 </html>
