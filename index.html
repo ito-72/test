@@ -15,7 +15,7 @@
     table {
       border-collapse: collapse;
       width: 100%;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     th, td {
       border: 1px solid #ccc;
@@ -54,6 +54,11 @@
       color: #666;
       margin-top: 4px;
     }
+    #dupMessage {
+      color: red;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
@@ -88,6 +93,8 @@
     </tbody>
   </table>
 
+  <div id="dupMessage"></div>
+
   <div style="margin-bottom: 20px;">
     <button onclick="addRow()">＋ 行を追加<br>Ctrl(Cmd)+Enter</button>
   </div>
@@ -119,20 +126,6 @@
     }
   });
 
-  function addRow() {
-    const table = document.getElementById('inputTable').getElementsByTagName('tbody')[0];
-    const newRow = table.insertRow();
-    const cell1 = newRow.insertCell();
-    const cell2 = newRow.insertCell();
-    const cell3 = newRow.insertCell();
-    cell1.innerHTML = '<input type="text" class="no-input">';
-    cell2.className = 'count-cell';
-    cell2.textContent = '-';
-    cell3.innerHTML = '<input type="text" class="destination-input">';
-    const input = cell1.querySelector('input');
-    if (input) input.focus();
-  }
-
   function parseRange(str) {
     let result = [];
     str = str.replace(/[　]/g, ' ')
@@ -158,48 +151,96 @@
     return result;
   }
 
-  function checkData() {
+  function updateSingleRowCount(row) {
+    const noInput = row.querySelector('.no-input');
+    const countCell = row.querySelector('.count-cell');
+    const raw = noInput.value.trim();
+    const parsed = parseRange(raw);
+    noInput.classList.remove('error');
+    if (!raw) {
+      countCell.textContent = '-';
+      return;
+    }
+    if (parsed === null) {
+      countCell.textContent = '-';
+    } else {
+      countCell.textContent = parsed.length + '冊';
+    }
+  }
+
+  function checkDuplicatesLive() {
     const rows = document.querySelectorAll('#inputTable tbody tr');
     const numberMap = new Map();
-    let errorMessages = [];
-    rows.forEach((row, index) => {
-      const noInput = row.querySelector('.no-input');
-      const countCell = row.querySelector('.count-cell');
-      const raw = noInput.value.trim();
+    const dupMessageEl = document.getElementById('dupMessage');
+    dupMessageEl.innerHTML = '';
+
+    rows.forEach((row) => {
+      const input = row.querySelector('.no-input');
+      input.classList.remove('error');
+      const raw = input.value.trim();
       const parsed = parseRange(raw);
-      noInput.classList.remove('error');
-      if (!raw) {
-        countCell.textContent = '-';
-        return;
-      }
-      if (parsed === null) {
-        errorMessages.push(`${index + 2}行目の No.欄の形式に誤りがあります。`);
-        noInput.classList.add('error');
-        countCell.textContent = '-';
-      } else {
-        countCell.textContent = parsed.length + '冊';
+      if (parsed !== null) {
         parsed.forEach(num => {
           if (!numberMap.has(num)) numberMap.set(num, []);
-          numberMap.get(num).push(index + 2);
+          numberMap.get(num).push(row);
         });
       }
     });
-    const duplicateMessages = [];
-    for (const [num, rows] of numberMap.entries()) {
-      if (rows.length > 1) {
-        duplicateMessages.push(`・${num} が ${rows.join('行目と ')}行目 に重複しています`);
-        rows.forEach(rowNum => {
-          const input = document.querySelector(`#inputTable tbody tr:nth-child(${rowNum - 1}) .no-input`);
+
+    let hasDup = false;
+    const messages = [];
+
+    for (const [num, rowList] of numberMap.entries()) {
+      if (rowList.length > 1) {
+        hasDup = true;
+        messages.push(`No.${num} が重複しています`);
+        rowList.forEach(row => {
+          const input = row.querySelector('.no-input');
           if (input) input.classList.add('error');
         });
       }
     }
-    if (errorMessages.length > 0 || duplicateMessages.length > 0) {
-      alert((errorMessages.concat(duplicateMessages)).join('\n') +
-        '\n\n・半角数字のみを使用してください\n・使用可能な記号は「-」「~」「ー」「～」「,」です（例：1-4,6,8）\n・区切りは「,」またはスペースで入力してください\n・アルファベットは使えません');
-    } else {
-      alert('チェック完了！すべて正常です。');
+
+    if (hasDup) {
+      dupMessageEl.innerHTML = messages.join('<br>');
     }
+  }
+
+  function addRow() {
+    const table = document.getElementById('inputTable').getElementsByTagName('tbody')[0];
+    const newRow = table.insertRow();
+    const cell1 = newRow.insertCell();
+    const cell2 = newRow.insertCell();
+    const cell3 = newRow.insertCell();
+    cell1.innerHTML = '<input type="text" class="no-input">';
+    cell2.className = 'count-cell';
+    cell2.textContent = '-';
+    cell3.innerHTML = '<input type="text" class="destination-input">';
+
+    const input = cell1.querySelector('input');
+    if (input) {
+      input.focus();
+      input.addEventListener('input', () => {
+        updateSingleRowCount(newRow);
+        checkDuplicatesLive();
+      });
+    }
+  }
+
+  document.querySelectorAll('.no-input').forEach(input => {
+    input.addEventListener('input', () => {
+      const row = input.closest('tr');
+      if (row) {
+        updateSingleRowCount(row);
+        checkDuplicatesLive();
+      }
+    });
+  });
+
+  function checkData() {
+    document.querySelectorAll('#inputTable tbody tr').forEach(updateSingleRowCount);
+    checkDuplicatesLive();
+    alert('チェック完了！（リアルタイム反映されています）');
   }
 
   function exportExcel() {
@@ -259,6 +300,13 @@
             cell2.className = 'count-cell';
             cell2.textContent = row[1] || '-';
             cell3.innerHTML = `<input type="text" class="destination-input" value="${row[2] || ''}">`;
+
+            // リアルタイム更新イベント追加
+            const input = cell1.querySelector('input');
+            input.addEventListener('input', () => {
+              updateSingleRowCount(newRow);
+              checkDuplicatesLive();
+            });
           }
         });
 
