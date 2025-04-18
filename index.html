@@ -214,15 +214,19 @@
     const messages = [];
 
     for (const [num, rowList] of numberMap.entries()) {
-      if (rowList.length > 1) {
-        hasDup = true;
-        messages.push(`No.${num} が重複しています`);
-        rowList.forEach(row => {
-          const input = row.querySelector('.no-input');
-          if (input) input.classList.add('error');
-        });
+  if (rowList.length > 1) {
+    hasDup = true;
+    messages.push(`No.${num} が重複しています`);
+    rowList.forEach(row => {
+      const input = row.querySelector('.no-input');
+      if (input) {
+        input.classList.add('error');
+        row.querySelector('.count-cell').textContent = '-'; // 冊数を非表示に
       }
-    }
+    });
+  }
+}
+
 
     if (hasDup) {
       dupMessageEl.innerHTML = messages.join('<br>');
