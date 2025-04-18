@@ -75,16 +75,16 @@
   <table id="inputTable">
     <thead>
       <tr>
+        <th>納品先</th>
         <th>No.</th>
         <th>冊数<br><span class="info">（自動で記入されます）</span></th>
-        <th>納品先</th>
       </tr>
     </thead>
     <tbody>
       <tr>
+        <td><input type="text" class="destination-input"></td>
         <td><input type="text" class="no-input"></td>
         <td class="count-cell">-</td>
-        <td><input type="text" class="destination-input"></td>
       </tr>
     </tbody>
   </table>
@@ -220,9 +220,9 @@
     const table = document.getElementById('inputTable').getElementsByTagName('tbody')[0];
     const newRow = table.insertRow();
     newRow.innerHTML = `
+      <td><input type="text" class="destination-input"></td>
       <td><input type="text" class="no-input"></td>
       <td class="count-cell">-</td>
-      <td><input type="text" class="destination-input"></td>
     `;
     const input = newRow.querySelector('.no-input');
     input.addEventListener('input', () => {
@@ -243,9 +243,9 @@
     const rows = document.querySelectorAll('#inputTable tbody tr');
     const data = [['No.', '冊数', '納品先']];
     rows.forEach(row => {
+      const dest = row.querySelector('.destination-input').value.trim();
       const no = row.querySelector('.no-input').value.trim();
       const count = row.querySelector('.count-cell').textContent.trim();
-      const dest = row.querySelector('.destination-input').value.trim();
       if (no && count !== '-' && dest) {
         data.push([no, count, dest]);
       }
@@ -290,9 +290,9 @@
           if (row.length >= 3) {
             const newRow = tbody.insertRow();
             newRow.innerHTML = `
+              <td><input type="text" class="destination-input" value="${row[2] || ''}"></td>
               <td><input type="text" class="no-input" value="${row[0] || ''}"></td>
               <td class="count-cell">-</td>
-              <td><input type="text" class="destination-input" value="${row[2] || ''}"></td>
             `;
             const input = newRow.querySelector('.no-input');
             input.addEventListener('input', () => {
