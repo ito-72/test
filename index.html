@@ -244,26 +244,27 @@
   });
 
   function exportExcel() {
-    const rows = document.querySelectorAll('#inputTable tbody tr');
-    const data = [['No.', '冊数', '納品先']];
-    rows.forEach(row => {
-      const dest = row.querySelector('.destination-input').value.trim();
-      const no = row.querySelector('.no-input').value.trim();
-      const count = row.querySelector('.count-cell').textContent.trim();
-      if (no && count !== '-' && dest) {
-        data.push([no, count, dest]);
-      }
-    });
-    const worksheet = XLSX.utils.aoa_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, '納品データ');
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = ('0' + (today.getMonth() + 1)).slice(-2);
-    const d = ('0' + today.getDate()).slice(-2);
-    const fileName = `納品データ_${y}${m}${d}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-  }
+  const rows = document.querySelectorAll('#inputTable tbody tr');
+  const data = [['No.', '冊数', '納品先']];
+  rows.forEach(row => {
+    const dest = row.querySelector('.destination-input').value.trim();
+    const no = row.querySelector('.no-input').value.trim();
+    const count = parseInt(row.querySelector('.count-cell').textContent.trim()); // ←ここを修正
+    if (no && !isNaN(count) && dest) {
+      data.push([no, count, dest]);
+    }
+  });
+  const worksheet = XLSX.utils.aoa_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, '納品データ');
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = ('0' + (today.getMonth() + 1)).slice(-2);
+  const d = ('0' + today.getDate()).slice(-2);
+  const fileName = `納品データ_${y}${m}${d}.xlsx`;
+  XLSX.writeFile(workbook, fileName);
+}
+
 
   function launchMail() {
     const subject = encodeURIComponent('納品データのご送付');
