@@ -93,6 +93,7 @@
     </tbody>
   </table>
 
+  <div id="totalCount" class="info" style="margin-bottom: 20px;">合計：0冊</div>
   <div id="dupMessage"></div>
 
   <div style="margin-bottom: 20px;">
@@ -157,15 +158,37 @@
     const raw = noInput.value.trim();
     const parsed = parseRange(raw);
     noInput.classList.remove('error');
+
     if (!raw) {
       countCell.textContent = '-';
+      updateTotalCount();
       return;
     }
+
     if (parsed === null) {
       countCell.textContent = '-';
+      noInput.classList.add('error');
     } else {
       countCell.textContent = parsed.length + '冊';
     }
+
+    updateTotalCount();
+  }
+
+  function updateTotalCount() {
+    const rows = document.querySelectorAll('#inputTable tbody tr');
+    let total = 0;
+
+    rows.forEach(row => {
+      const noInput = row.querySelector('.no-input');
+      const raw = noInput.value.trim();
+      const parsed = parseRange(raw);
+      if (parsed !== null) {
+        total += parsed.length;
+      }
+    });
+
+    document.getElementById('totalCount').textContent = `合計：${total}冊`;
   }
 
   function checkDuplicatesLive() {
@@ -240,6 +263,7 @@
   function checkData() {
     document.querySelectorAll('#inputTable tbody tr').forEach(updateSingleRowCount);
     checkDuplicatesLive();
+    updateTotalCount();
     alert('チェック完了！（リアルタイム反映されています）');
   }
 
@@ -298,15 +322,16 @@
             const cell3 = newRow.insertCell();
             cell1.innerHTML = `<input type="text" class="no-input" value="${row[0] || ''}">`;
             cell2.className = 'count-cell';
-            cell2.textContent = row[1] || '-';
+            cell2.textContent = '-'; // 再計算させるので初期化
             cell3.innerHTML = `<input type="text" class="destination-input" value="${row[2] || ''}">`;
 
-            // リアルタイム更新イベント追加
             const input = cell1.querySelector('input');
             input.addEventListener('input', () => {
               updateSingleRowCount(newRow);
               checkDuplicatesLive();
             });
+
+            updateSingleRowCount(newRow); // インポート直後も計算
           }
         });
 
