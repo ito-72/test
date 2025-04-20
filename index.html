@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>納品データ作成ツール</title>
+  <title>納品ツール統合版</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body {
@@ -20,7 +20,6 @@
     th, td {
       border: 1px solid #ccc;
       padding: 8px;
-      text-align: left;
     }
     input[type="text"] {
       width: 95%;
@@ -34,13 +33,6 @@
       margin-right: 10px;
       margin-bottom: 10px;
     }
-    .spaced {
-      margin-top: 30px;
-    }
-    .error {
-      border: 2px solid red;
-      background-color: #ffecec;
-    }
     .info {
       font-size: 14px;
       color: #555;
@@ -50,272 +42,233 @@
       color: #666;
       margin-top: 4px;
     }
-    #dupMessage {
-      color: red;
-      font-size: 14px;
-      margin-bottom: 20px;
-    }
   </style>
 </head>
 <body>
-  <h1>納品データ作成ツール</h1>
-
-  <details style="margin-bottom: 20px;">
-    <summary><strong>📘 このツールの使い方</strong></summary>
-    <ol>
-      <li><strong>No.欄</strong>にナンバリングを入力してください（例：1-4 5 8-10）</li>
-      <li><strong>納品先</strong>を記入してください</li>
-      <li>納品先が分かれる場合は「＋行を追加」して、それぞれ記入してください</li>
-      <li>記入後、自動で冊数と重複が確認されます</li>
-      <li>内容に問題がなければ「Excelファイルを作成」ボタンでダウンロードできます</li>
-      <li>「メール作成画面を開く」ボタンでメールソフトが立ち上がります<br>※Excelファイルはご自身で添付をお願いします</li>
-    </ol>
-  </details>
+  <h1>納品ツール統合版</h1>
 
   <table id="inputTable">
     <thead>
       <tr>
         <th>納品先</th>
         <th>No.</th>
-        <th>冊数<br><span class="info">（自動で記入されます）</span></th>
+        <th>冊数</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td><input type="text" class="destination-input"></td>
         <td><input type="text" class="no-input"></td>
-        <td class="count-cell">-</td>
+        <td><input type="text" class="count-input"></td>
       </tr>
     </tbody>
   </table>
 
-  <div id="totalCount" class="info" style="margin-bottom: 20px;">合計：0冊</div>
-  <div id="dupMessage"></div>
+  <button onclick="addRow()">＋ 行を追加（Ctrl/Cmd + Enter）</button>
+  <button onclick="assignNumbers()">割り振り開始</button>
+  <button onclick="exportExcel()">Excelファイルを作成</button>
+  <div class="tooltip">入力済みのデータをExcel形式でダウンロードできます</div>
+  <button onclick="launchMail()">メール作成画面を開く</button>
+  <div class="tooltip">※Excelファイルは手動で添付してください</div>
+  <input type="file" id="importExcel" accept=".xlsx">
+  <div class="tooltip">既存のExcelから納品データをインポートします</div>
 
-  <div style="margin-bottom: 20px;">
-    <button onclick="addRow()">＋ 行を追加<br>Ctrl(Cmd)+Enter</button>
-  </div>
+  <script>
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        addRow();
+      }
+    });
 
-  <div class="spaced">
-    <button onclick="exportExcel()">Excelファイルを作成</button>
-    <div class="tooltip">入力済みのデータをExcel形式でダウンロードできます</div>
-  </div>
-
-  <div class="spaced">
-    <button onclick="launchMail()">メール作成画面を開く</button>
-    <div class="tooltip">※Excelファイルは手動で添付してください</div>
-  </div>
-
-  <div class="spaced">
-    <input type="file" id="importExcel" accept=".xlsx">
-    <div class="tooltip">既存のExcelから納品データをインポートします</div>
-  </div>
-
-<script>
-  document.addEventListener('keydown', function (e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      addRow();
+    function addRow() {
+      const tbody = document.querySelector('#inputTable tbody');
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><input type="text" class="destination-input"></td>
+        <td><input type="text" class="no-input"></td>
+        <td><input type="text" class="count-input"></td>
+      `;
+      tbody.appendChild(row);
+      row.querySelector('.destination-input').focus();
     }
-  });
 
-  function parseRange(str) {
-    let result = [];
-    str = str.replace(/[　]/g, ' ')
-             .replace(/[、]/g, ',')
-             .replace(/[~ー～?]/g, '-')
-             .replace(/\s+/g, ',')
-             .replace(/,,+/g, ',');
-    const parts = str.split(',');
-    for (const part of parts) {
-      if (part.includes('-')) {
-        const [start, end] = part.split('-').map(Number);
-        if (!isNaN(start) && !isNaN(end) && start <= end) {
-          for (let i = start; i <= end; i++) result.push(i);
+    function parseRange(str) {
+      let result = [];
+      str = str.replace(/[　]/g, ' ')
+               .replace(/[、]/g, ',')
+               .replace(/[~ー～?]/g, '-')
+               .replace(/\s+/g, ',')
+               .replace(/,,+/g, ',');
+      const parts = str.split(',');
+      for (const part of parts) {
+        if (part.includes('-')) {
+          const [start, end] = part.split('-').map(Number);
+          if (!isNaN(start) && !isNaN(end) && start <= end) {
+            for (let i = start; i <= end; i++) result.push(i);
+          } else {
+            return null;
+          }
+        } else if (!isNaN(part)) {
+          result.push(Number(part));
         } else {
           return null;
         }
-      } else if (!isNaN(part)) {
-        result.push(Number(part));
-      } else {
-        return null;
       }
+      return result;
     }
-    return result;
-  }
 
-  function updateSingleRowCount(row) {
-    const noInput = row.querySelector('.no-input');
-    const countCell = row.querySelector('.count-cell');
-    const raw = noInput.value.trim();
-    const parsed = parseRange(raw);
-    noInput.classList.remove('error');
+    function formatRange(numbers) {
+      if (!numbers.length) return '';
+      numbers.sort((a, b) => a - b);
+      const ranges = [];
+      let start = numbers[0];
+      let end = numbers[0];
 
-    if (!raw || parsed === null) {
-      countCell.textContent = '-';
-    } else {
-      countCell.textContent = parsed.length + '冊';
+      for (let i = 1; i < numbers.length; i++) {
+        if (numbers[i] === end + 1) {
+          end = numbers[i];
+        } else {
+          ranges.push(start === end ? `${start}` : `${start}-${end}`);
+          start = end = numbers[i];
+        }
+      }
+      ranges.push(start === end ? `${start}` : `${start}-${end}`);
+      return ranges.join(' ');
     }
-  }
 
-  function updateTotalCount() {
-    const rows = document.querySelectorAll('#inputTable tbody tr');
-    let total = 0;
-    rows.forEach(row => {
-      const countText = row.querySelector('.count-cell').textContent;
-      if (countText.endsWith('冊')) {
-        total += parseInt(countText);
-      }
-    });
-    document.getElementById('totalCount').textContent = `合計：${total}冊`;
-  }
+    function assignNumbers() {
+      const rows = document.querySelectorAll('#inputTable tbody tr');
+      const usedNumbers = new Set();
+      const rowData = [];
 
-  function checkDuplicatesLive() {
-    const rows = document.querySelectorAll('#inputTable tbody tr');
-    const numberMap = new Map();
-    const dupMessageEl = document.getElementById('dupMessage');
-    dupMessageEl.innerHTML = '';
-
-    rows.forEach(row => {
-      row.querySelector('.no-input').classList.remove('error');
-      updateSingleRowCount(row);
-    });
-
-    rows.forEach((row) => {
-      const input = row.querySelector('.no-input');
-      const raw = input.value.trim();
-      const parsed = parseRange(raw);
-      if (parsed !== null) {
-        parsed.forEach(num => {
-          if (!numberMap.has(num)) numberMap.set(num, []);
-          numberMap.get(num).push(row);
-        });
-      }
-    });
-
-    let hasDup = false;
-    const messages = [];
-
-    for (const [num, rowList] of numberMap.entries()) {
-      if (rowList.length > 1) {
-        hasDup = true;
-        messages.push(`No.${num} が重複しています`);
-        rowList.forEach(row => {
-          const input = row.querySelector('.no-input');
-          if (input) {
-            input.classList.add('error');
-            row.querySelector('.count-cell').textContent = '-';
+      for (const row of rows) {
+        const noStr = row.querySelector('.no-input').value.trim();
+        if (noStr) {
+          const parsed = parseRange(noStr);
+          if (!parsed) {
+            alert('No.の書式が正しくありません。確認してください。');
+            return;
           }
-        });
+          parsed.forEach(num => usedNumbers.add(num));
+        }
       }
-    }
 
-    if (hasDup) {
-      dupMessageEl.innerHTML = messages.join('<br>');
-    }
+      for (const row of rows) {
+        const dest = row.querySelector('.destination-input').value.trim();
+        const noStr = row.querySelector('.no-input').value.trim();
+        const countStr = row.querySelector('.count-input').value.trim();
 
-    updateTotalCount();
-  }
+        const parsedNo = noStr ? parseRange(noStr) : null;
+        const parsedCount = countStr ? parseInt(countStr) : null;
 
-  function addRow() {
-  const table = document.getElementById('inputTable').getElementsByTagName('tbody')[0];
-  const newRow = table.insertRow();
-  newRow.innerHTML = `
-    <td><input type="text" class="destination-input"></td>
-    <td><input type="text" class="no-input"></td>
-    <td class="count-cell">-</td>
-  `;
-  const input = newRow.querySelector('.no-input');
-  input.addEventListener('input', () => {
-    updateSingleRowCount(newRow);
-    checkDuplicatesLive();
-  });
+        rowData.push({ row, dest, noStr, parsedNo, countStr, parsedCount });
+      }
 
-  // 🟢 ここで納品先にカーソルを合わせる
-  newRow.querySelector('.destination-input').focus();
-}
+      let nextNumber = 1;
+      for (const data of rowData) {
+        const { row, dest, parsedNo, parsedCount } = data;
+        const noInput = row.querySelector('.no-input');
+        const countInput = row.querySelector('.count-input');
 
-
-  document.querySelectorAll('.no-input').forEach(input => {
-    input.addEventListener('input', () => {
-      const row = input.closest('tr');
-      updateSingleRowCount(row);
-      checkDuplicatesLive();
-    });
-  });
-
-  function exportExcel() {
-  const rows = document.querySelectorAll('#inputTable tbody tr');
-  const data = [['No.', '冊数', '納品先']];
-  rows.forEach(row => {
-    const dest = row.querySelector('.destination-input').value.trim();
-    const no = row.querySelector('.no-input').value.trim();
-    const count = parseInt(row.querySelector('.count-cell').textContent.trim()); // ←ここを修正
-    if (no && !isNaN(count) && dest) {
-      data.push([no, count, dest]);
-    }
-  });
-  const worksheet = XLSX.utils.aoa_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, '納品データ');
-  const today = new Date();
-  const y = today.getFullYear();
-  const m = ('0' + (today.getMonth() + 1)).slice(-2);
-  const d = ('0' + today.getDate()).slice(-2);
-  const fileName = `納品データ_${y}${m}${d}.xlsx`;
-  XLSX.writeFile(workbook, fileName);
-}
-
-
-  function launchMail() {
-    const subject = encodeURIComponent('納品データのご送付');
-    const body = encodeURIComponent(
-      'お疲れ様です。\n\n以下、納品データになります。\n\n※添付忘れにご注意ください※\n出力されたExcelファイル（納品データ_YYYYMMDD.xlsx）を添付のうえ、ご確認をお願いいたします。\n\nよろしくお願いいたします。'
-    );
-    const mailtoLink = `mailto:sprt@nifty.com?subject=${subject}&body=${body}`;
-    window.location.href = mailtoLink;
-  }
-
-  document.getElementById('importExcel').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        const tbody = document.querySelector('#inputTable tbody');
-        tbody.innerHTML = '';
-
-        rows.slice(1).forEach(row => {
-          if (row.length >= 3) {
-            const newRow = tbody.insertRow();
-            newRow.innerHTML = `
-              <td><input type="text" class="destination-input" value="${row[2] || ''}"></td>
-              <td><input type="text" class="no-input" value="${row[0] || ''}"></td>
-              <td class="count-cell">-</td>
-            `;
-            const input = newRow.querySelector('.no-input');
-            input.addEventListener('input', () => {
-              updateSingleRowCount(newRow);
-              checkDuplicatesLive();
-            });
-            updateSingleRowCount(newRow);
+        if (parsedNo && !parsedCount) {
+          countInput.value = parsedNo.length;
+        } else if (parsedNo && parsedCount) {
+          if (parsedNo.length !== parsedCount) {
+            const msg = `納品先「${dest || '（未記入）'}」のNo.に含まれる冊数（${parsedNo.length}冊）と、指定された冊数（${parsedCount}冊）が一致しません。\n\nNo.に合わせて冊数を自動修正しますか？`;
+            const fix = confirm(msg);
+            if (fix) {
+              countInput.value = parsedNo.length;
+            } else {
+              return;
+            }
           }
-        });
-
-        alert('Excelファイルを読み込みました！');
-      } catch (err) {
-        console.error(err);
-        alert('Excelの読み込みに失敗しました。形式が正しいか確認してください。');
+        } else if (!parsedNo && parsedCount) {
+          const newNumbers = [];
+          while (newNumbers.length < parsedCount) {
+            if (!usedNumbers.has(nextNumber)) {
+              newNumbers.push(nextNumber);
+              usedNumbers.add(nextNumber);
+            }
+            nextNumber++;
+            if (nextNumber > 10000) {
+              alert('空きNo.が足りません。');
+              return;
+            }
+          }
+          noInput.value = formatRange(newNumbers);
+        }
       }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-</script>
+
+      alert('割り振りが完了しました！');
+    }
+
+    function exportExcel() {
+      const rows = document.querySelectorAll('#inputTable tbody tr');
+      const data = [['No.', '冊数', '納品先']];
+      rows.forEach(row => {
+        const dest = row.querySelector('.destination-input').value.trim();
+        const no = row.querySelector('.no-input').value.trim();
+        const count = parseInt(row.querySelector('.count-input').value.trim());
+        if (no && !isNaN(count) && dest) {
+          data.push([no, count, dest]);
+        }
+      });
+      const worksheet = XLSX.utils.aoa_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, '納品データ');
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = ('0' + (today.getMonth() + 1)).slice(-2);
+      const d = ('0' + today.getDate()).slice(-2);
+      const fileName = `納品データ_${y}${m}${d}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+    }
+
+    function launchMail() {
+      const subject = encodeURIComponent('納品データのご送付');
+      const body = encodeURIComponent(
+        'お疲れ様です。\n\n以下、納品データになります。\n\n※添付忘れにご注意ください※\n出力されたExcelファイル（納品データ_YYYYMMDD.xlsx）を添付のうえ、ご確認をお願いいたします。\n\nよろしくお願いいたします。'
+      );
+      const mailtoLink = `mailto:sprt@nifty.com?subject=${subject}&body=${body}`;
+      window.location.href = mailtoLink;
+    }
+
+    document.getElementById('importExcel').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          const tbody = document.querySelector('#inputTable tbody');
+          tbody.innerHTML = '';
+
+          rows.slice(1).forEach(row => {
+            if (row.length >= 3) {
+              const newRow = tbody.insertRow();
+              newRow.innerHTML = `
+                <td><input type="text" class="destination-input" value="${row[2] || ''}"></td>
+                <td><input type="text" class="no-input" value="${row[0] || ''}"></td>
+                <td><input type="text" class="count-input" value="${row[1] || ''}"></td>
+              `;
+            }
+          });
+
+          alert('Excelファイルを読み込みました！');
+        } catch (err) {
+          console.error(err);
+          alert('Excelの読み込みに失敗しました。形式が正しいか確認してください。');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  </script>
 </body>
 </html>
