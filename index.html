@@ -42,30 +42,33 @@
       color: #666;
       margin-top: 4px;
     }
+    .subtotal {
+      margin-top: 10px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
   <h1>納品ツール統合版</h1>
-  
+
   <div class="info">
-  <p><strong>本ツールの特徴：</strong><br>
-  ・納品番号（No.）をすでに決めている場合は、その番号を入力しておくことで、<br>
-　　他の行ではその番号を避けて自動割り当てが行われます。<br>
-  ・「No.」のみ入力した場合は、その範囲から冊数を自動計算。<br>
-  ・「冊数」のみ入力した場合は、空いている番号から自動でNo.を割り当てます。<br>
-  ・両方を入力した場合は、整合性をチェックし、差異がある場合は自動修正の確認が表示されます。</p>
+    <p><strong>本ツールの特徴：</strong><br>
+    ・納品番号（No.）をすでに決めている場合は、その番号を入力しておくことで、<br>
+    　　他の行ではその番号を避けて自動割り当てが行われます。<br>
+    ・「No.」のみ入力した場合は、その範囲から冊数を自動計算。<br>
+    ・「冊数」のみ入力した場合は、空いている番号から自動でNo.を割り当てます。<br>
+    ・両方を入力した場合は、整合性をチェックし、差異がある場合は自動修正の確認が表示されます。</p>
 
-  <p><strong>操作手順：</strong></p>
-  <ol>
-    <li>各行に「納品先」「No.」「冊数」のいずれか（または両方）を入力してください。</li>
-    <li>「＋ 行を追加」ボタンまたは <kbd>Ctrl/Cmd + Enter</kbd> で行を追加。</li>
-    <li>「割り振り開始」で自動割り振り＆整合チェック。</li>
-    <li>「Excelファイルを作成」でダウンロード。</li>
-    <li>「メール作成画面を開く」で送信用メール作成（ファイル添付は手動）。</li>
-    <li>「Excelファイル読み込み」で既存のデータをインポート可能。</li>
-  </ol>
-</div>
-
+    <p><strong>操作手順：</strong></p>
+    <ol>
+      <li>各行に「納品先」「No.」「冊数」のいずれか（または両方）を入力してください。</li>
+      <li>「＋ 行を追加」ボタンまたは <kbd>Ctrl/Cmd + Enter</kbd> で行を追加。</li>
+      <li>「割り振り開始」で自動割り振り＆整合チェック。</li>
+      <li>「Excelファイルを作成」でダウンロード。</li>
+      <li>「メール作成画面を開く」で送信用メール作成（ファイル添付は手動）。</li>
+      <li>「Excelファイル読み込み」で既存のデータをインポート可能。</li>
+    </ol>
+  </div>
 
   <table id="inputTable">
     <thead>
@@ -84,10 +87,13 @@
     </tbody>
   </table>
 
-  <button onclick="addRow()">＋ 行を追加（Ctrl/Cmd + Enter）</button>
-  <br>
-  <button onclick="assignNumbers()">割り振り開始</button>
-  <br>
+  <!-- 小計表示 -->
+  <div class="subtotal">
+    小計: <span id="subtotal">0</span> 冊
+  </div>
+
+  <button onclick="addRow()">＋ 行を追加（Ctrl/Cmd + Enter）</button><br>
+  <button onclick="assignNumbers()">割り振り開始</button><br>
   <button onclick="exportExcel()">Excelファイルを作成</button>
   <div class="tooltip">入力済みのデータをExcel形式でダウンロードできます</div>
   <button onclick="launchMail()">メール作成画面を開く</button>
@@ -103,6 +109,16 @@
       }
     });
 
+    function updateSubtotal() {
+      const countInputs = document.querySelectorAll('.count-input');
+      let subtotal = 0;
+      countInputs.forEach(input => {
+        const val = parseInt(input.value);
+        if (!isNaN(val)) subtotal += val;
+      });
+      document.getElementById('subtotal').textContent = subtotal;
+    }
+
     function addRow() {
       const tbody = document.querySelector('#inputTable tbody');
       const row = document.createElement('tr');
@@ -113,6 +129,9 @@
       `;
       tbody.appendChild(row);
       row.querySelector('.destination-input').focus();
+
+      // 入力イベントで小計更新
+      row.querySelector('.count-input').addEventListener('input', updateSubtotal);
     }
 
     function parseRange(str) {
@@ -222,6 +241,7 @@
         }
       }
 
+      updateSubtotal(); // 小計更新
       alert('割り振りが完了しました！');
     }
 
@@ -280,9 +300,11 @@
                 <td><input type="text" class="no-input" value="${row[0] || ''}"></td>
                 <td><input type="text" class="count-input" value="${row[1] || ''}"></td>
               `;
+              newRow.querySelector('.count-input').addEventListener('input', updateSubtotal);
             }
           });
 
+          updateSubtotal();
           alert('Excelファイルを読み込みました！');
         } catch (err) {
           console.error(err);
@@ -291,6 +313,10 @@
       };
       reader.readAsArrayBuffer(file);
     });
+
+    window.onload = function () {
+      document.querySelector('.count-input').addEventListener('input', updateSubtotal);
+    };
   </script>
 </body>
 </html>
