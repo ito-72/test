@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>納品ツール統合版</title>
+  <title>納品ツール</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body {
@@ -54,9 +54,21 @@
 
   <div class="info">
     <p><strong>本ツールの特徴：</strong><br>
-    ・No.の重複を検出し、行を赤く表示<br>
-    ・No.みの指定で内部算定、箇所のみの指定でNo.自動割り振り<br>
-    ・完了後はExcel出力やメール作成</p>
+    ・納品番号（No.）をすでに決めている場合は、その番号を入力しておくことで、<br>
+    　　他の行ではその番号を避けて自動割り当てが行われます。<br>
+    ・「No.」のみ入力した場合は、その範囲から冊数を自動計算。<br>
+    ・「冊数」のみ入力した場合は、空いている番号から自動でNo.を割り当てます。<br>
+    ・両方を入力した場合は、整合性をチェックし、差異がある場合は自動修正の確認が表示されます。</p>
+
+    <p><strong>操作手順：</strong></p>
+    <ol>
+      <li>各行に「納品先」「No.」「冊数」のいずれか（または両方）を入力してください。</li>
+      <li>「＋ 行を追加」ボタンまたは <kbd>Ctrl/Cmd + Enter</kbd> で行を追加。</li>
+      <li>「割り振り開始」で自動割り振り＆整合チェック。</li>
+      <li>「Excelファイルを作成」でダウンロード。</li>
+      <li>「メール作成画面を開く」で送信用メール作成（ファイル添付は手動）。</li>
+      <li>「Excelファイル読み込み」で既存のデータをインポート可能。</li>
+    </ol>
   </div>
 
   <table id="inputTable">
@@ -80,11 +92,14 @@
     小計: <span id="subtotal">0</span> 冊
   </div>
 
-  <button onclick="addRow()">＋ 行を追加</button>
-  <button onclick="assignNumbers()">割り振り開始</button>
+  <button onclick="addRow()">＋ 行を追加（Ctrl/Cmd + Enter）</button><br>
+  <button onclick="assignNumbers()">割り振り開始</button><br>
   <button onclick="exportExcel()">Excelファイルを作成</button>
+  <div class="tooltip">入力済みのデータをExcel形式でダウンロードできます</div>
   <button onclick="launchMail()">メール作成画面を開く</button>
+  <div class="tooltip">※Excelファイルは手動で添付してください</div>
   <input type="file" id="importExcel" accept=".xlsx">
+  <div class="tooltip">既存のExcelから納品データをインポートします</div>
 
   <script>
     document.addEventListener('keydown', function (e) {
@@ -162,13 +177,16 @@
 
     function assignNumbers() {
       const rows = document.querySelectorAll('#inputTable tbody tr');
+
+      // 🔄 背景リセット
+      for (const row of rows) {
+        row.style.backgroundColor = '';
+      }
+
       const usedNumbers = new Set();
       const seenNumbers = new Set();
       const duplicates = new Set();
-      const numberToRowMap = new Map();
       const rowData = [];
-
-      rows.forEach(row => row.style.backgroundColor = '');
 
       for (const row of rows) {
         const noStr = row.querySelector('.no-input').value.trim();
@@ -181,21 +199,25 @@
           for (const num of parsed) {
             if (seenNumbers.has(num)) {
               duplicates.add(num);
-              if (numberToRowMap.has(num)) {
-                numberToRowMap.get(num).style.backgroundColor = '#f8d7da';
-              }
-              row.style.backgroundColor = '#f8d7da';
             } else {
               seenNumbers.add(num);
-              numberToRowMap.set(num, row);
             }
             usedNumbers.add(num);
           }
         }
       }
 
+      // ⚠️ 重複がある行を赤く表示
       if (duplicates.size > 0) {
-        alert(`No.が重複しています：${Array.from(duplicates).join(', ')}\n\n重複した行は赤く表示されています。`);
+        for (const row of rows) {
+          const noStr = row.querySelector('.no-input').value.trim();
+          const parsed = noStr ? parseRange(noStr) : [];
+          if (parsed && parsed.some(num => duplicates.has(num))) {
+            row.style.backgroundColor = '#fdd';
+          }
+        }
+
+        alert(`No.が重複しています：${Array.from(duplicates).join(', ')}\n\n重複を解消してからやり直してください。`);
         return;
       }
 
