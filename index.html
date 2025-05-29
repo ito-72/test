@@ -45,7 +45,7 @@
     .subtotal {
       margin-top: 10px;
       font-weight: bold;
-        text-align: right;
+      text-align: right;
     }
   </style>
 </head>
@@ -88,7 +88,6 @@
     </tbody>
   </table>
 
-  <!-- 小計表示 -->
   <div class="subtotal">
     小計: <span id="subtotal">0</span> 冊
   </div>
@@ -130,8 +129,6 @@
       `;
       tbody.appendChild(row);
       row.querySelector('.destination-input').focus();
-
-      // 入力イベントで小計更新
       row.querySelector('.count-input').addEventListener('input', updateSubtotal);
     }
 
@@ -166,7 +163,6 @@
       const ranges = [];
       let start = numbers[0];
       let end = numbers[0];
-
       for (let i = 1; i < numbers.length; i++) {
         if (numbers[i] === end + 1) {
           end = numbers[i];
@@ -180,96 +176,42 @@
     }
 
     function assignNumbers() {
-  const rows = document.querySelectorAll('#inputTable tbody tr');
-  const usedNumbers = new Set();
-  const seenNumbers = new Set(); // 重複チェック用
-  const duplicates = new Set();
-  const rowData = [];
+      const rows = document.querySelectorAll('#inputTable tbody tr');
+      const usedNumbers = new Set();
+      const seenNumbers = new Set();
+      const duplicates = new Set();
+      const rowData = [];
 
-  // ① No.の重複チェックと使用済み番号の記録
-  for (const row of rows) {
-    const noStr = row.querySelector('.no-input').value.trim();
-    if (noStr) {
-      const parsed = parseRange(noStr);
-      if (!parsed) {
-        alert('No.の書式が正しくありません。確認してください。');
+      for (const row of rows) {
+        const noStr = row.querySelector('.no-input').value.trim();
+        if (noStr) {
+          const parsed = parseRange(noStr);
+          if (!parsed) {
+            alert('No.の書式が正しくありません。確認してください。');
+            return;
+          }
+          for (const num of parsed) {
+            if (seenNumbers.has(num)) {
+              duplicates.add(num);
+            } else {
+              seenNumbers.add(num);
+            }
+            usedNumbers.add(num);
+          }
+        }
+      }
+
+      if (duplicates.size > 0) {
+        alert(`No.が重複しています：${Array.from(duplicates).join(', ')}\n\n重複を解消してからやり直してください。`);
         return;
       }
-      for (const num of parsed) {
-        if (seenNumbers.has(num)) {
-          duplicates.add(num);
-        } else {
-          seenNumbers.add(num);
-        }
-        usedNumbers.add(num); // 自動割り振り用
-      }
-    }
-  }
-
-  // ② 重複があったら警告を出して停止
-  if (duplicates.size > 0) {
-    alert(`No.が重複しています：${Array.from(duplicates).join(', ')}\n\n重複を解消してからやり直してください。`);
-    return;
-  }
-
-  // ③ 入力データを構造化
-  for (const row of rows) {
-    const dest = row.querySelector('.destination-input').value.trim();
-    const noStr = row.querySelector('.no-input').value.trim();
-    const countStr = row.querySelector('.count-input').value.trim();
-    const parsedNo = noStr ? parseRange(noStr) : null;
-    const parsedCount = countStr ? parseInt(countStr) : null;
-    rowData.push({ row, dest, noStr, parsedNo, countStr, parsedCount });
-  }
-
-  // ④ 自動割り振りと整合性チェック
-  let nextNumber = 1;
-  for (const data of rowData) {
-    const { row, dest, parsedNo, parsedCount } = data;
-    const noInput = row.querySelector('.no-input');
-    const countInput = row.querySelector('.count-input');
-
-    if (parsedNo && !parsedCount) {
-      countInput.value = parsedNo.length;
-    } else if (parsedNo && parsedCount) {
-      if (parsedNo.length !== parsedCount) {
-        const msg = `納品先「${dest || '（未記入）'}」のNo.に含まれる冊数（${parsedNo.length}冊）と、指定された冊数（${parsedCount}冊）が一致しません。\n\nNo.に合わせて冊数を自動修正しますか？`;
-        const fix = confirm(msg);
-        if (fix) {
-          countInput.value = parsedNo.length;
-        } else {
-          return;
-        }
-      }
-    } else if (!parsedNo && parsedCount) {
-      const newNumbers = [];
-      while (newNumbers.length < parsedCount) {
-        if (!usedNumbers.has(nextNumber)) {
-          newNumbers.push(nextNumber);
-          usedNumbers.add(nextNumber);
-        }
-        nextNumber++;
-        if (nextNumber > 10000) {
-          alert('空きNo.が足りません。');
-          return;
-        }
-      }
-      noInput.value = formatRange(newNumbers);
-    }
-  }
-
-  updateSubtotal(); // 小計更新
-  alert('割り振りが完了しました！');
-}
 
       for (const row of rows) {
         const dest = row.querySelector('.destination-input').value.trim();
         const noStr = row.querySelector('.no-input').value.trim();
         const countStr = row.querySelector('.count-input').value.trim();
-
         const parsedNo = noStr ? parseRange(noStr) : null;
         const parsedCount = countStr ? parseInt(countStr) : null;
-
         rowData.push({ row, dest, noStr, parsedNo, countStr, parsedCount });
       }
 
@@ -308,7 +250,7 @@
         }
       }
 
-      updateSubtotal(); // 小計更新
+      updateSubtotal();
       alert('割り振りが完了しました！');
     }
 
